@@ -24,6 +24,12 @@ jobs:
       - name: Install packages
         run: pip install xgboost pandas numpy requests matplotlib
 
+        - name: List files
+        run: ls -la
+
+      - name: Run prediction
+        run: python predict.py
+
       - name: Run prediction
         run: python predict.py
 
