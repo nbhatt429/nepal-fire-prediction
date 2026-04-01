@@ -30,8 +30,7 @@ jobs:
       - name: Run prediction
         run: python predict.py
 
-      - name: Run prediction
-        run: python predict.py
+  
 
       - name: Upload outputs
         uses: actions/upload-artifact@v4
