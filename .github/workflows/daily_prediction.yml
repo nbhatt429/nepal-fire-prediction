@@ -1,0 +1,35 @@
+name: Daily Nepal Fire Prediction
+
+on:
+  schedule:
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python packages
+        run: |
+          pip install xgboost pandas numpy requests matplotlib
+
+      - name: Run fire prediction
+        run: python predict.py
+
+      - name: Save risk map as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: fire-risk-map
+          path: |
+            fire_risk_map_*.png
+            fire_risk_*.csv
+          retention-days: 30
