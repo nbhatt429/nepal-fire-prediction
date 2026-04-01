@@ -22,7 +22,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install packages
-        run: pip install xgboost pandas numpy requests matplotlib
+        run: pip install xgboost scikit-learn pandas numpy requests matplotlib
 
         - name: List files
         run: ls -la
