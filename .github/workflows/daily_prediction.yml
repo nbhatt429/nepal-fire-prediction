@@ -5,18 +5,14 @@ on:
     - cron: '15 0 * * *'
   workflow_dispatch:
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   predict:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -24,13 +20,11 @@ jobs:
       - name: Install packages
         run: pip install xgboost scikit-learn pandas numpy requests matplotlib
 
-        - name: List files
+      - name: List files
         run: ls -la
 
       - name: Run prediction
         run: python predict.py
-
-  
 
       - name: Upload outputs
         uses: actions/upload-artifact@v4
