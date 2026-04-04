@@ -273,11 +273,11 @@ const RISK_SIZE = {
 // ── MAPS ───────────────────────────────────────────────────
 const riskMap = L.map('risk-map', {
   zoomControl:true, attributionControl:false
-}).setView([28.2, 83.5], 7);
+}).setView([28.1, 84.0], 7);
 
 const actualMap = L.map('actual-map', {
   zoomControl:false, attributionControl:false
-}).setView([28.2, 83.5], 6);
+}).setView([28.1, 84.0], 6);
 
 // Tile layers
 const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
@@ -285,8 +285,8 @@ L.tileLayer(tileUrl).addTo(riskMap);
 L.tileLayer(tileUrl).addTo(actualMap);
 
 // Nepal boundary box
-const nepalBounds = [[26.3, 80.0],[30.5, 88.2]];
 riskMap.setMaxBounds(nepalBounds);
+  riskMap.fitBounds([[26.3, 80.0],[30.5, 88.2]]);
 
 // ── LEGEND on risk map ─────────────────────────────────────
 const legend = L.control({ position:'bottomleft' });
