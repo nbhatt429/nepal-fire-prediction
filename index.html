@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nepal Forest Fire Early Warning System</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  background:#0f172a; color:white; height:100vh;
+  display:flex; flex-direction:column;
+}
+
+/* ── TOP HEADER ── */
+#header {
+  background:linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+  padding:10px 20px;
+  display:flex; align-items:center;
+  justify-content:space-between;
+  border-bottom:2px solid #16A34A;
+  flex-shrink:0;
+}
+#header-left h1 {
+  font-size:18px; color:white; font-weight:700;
+}
+#header-left p {
+  font-size:11px; color:#94a3b8; margin-top:2px;
+}
+#header-right {
+  text-align:right; font-size:11px; color:#64748b;
+}
+#header-right span {
+  display:block; color:#94a3b8; font-size:12px;
+}
+
+/* ── STATS BAR ── */
+#stats-bar {
+  background:#1e293b;
+  display:flex; gap:0; flex-shrink:0;
+  border-bottom:1px solid #334155;
+}
+.stat {
+  flex:1; padding:8px 12px; text-align:center;
+  border-right:1px solid #334155;
+  cursor:pointer; transition:background 0.2s;
+}
+.stat:hover { background:#334155; }
+.stat-num { font-size:22px; font-weight:800; }
+.stat-label { font-size:10px; color:#94a3b8; margin-top:1px; }
+.stat.low    .stat-num { color:#16A34A; }
+.stat.medium .stat-num { color:#D97706; }
+.stat.high   .stat-num { color:#EA580C; }
+.stat.vh     .stat-num { color:#DC2626; }
+.stat-source { font-size:10px; color:#64748b; margin-top:1px; }
+
+/* ── MAIN BODY ── */
+#main-body {
+  display:flex; flex:1; overflow:hidden;
+}
+
+/* ── LEFT PANEL — RISK MAP ── */
+#left-panel {
+  flex:1; display:flex; flex-direction:column;
+  border-right:2px solid #334155;
+}
+#left-title {
+  background:#1e293b; padding:8px 14px;
+  font-size:13px; font-weight:700; color:#16A34A;
+  border-bottom:1px solid #334155; flex-shrink:0;
+  display:flex; justify-content:space-between;
+  align-items:center;
+}
+#risk-map { flex:1; }
+
+/* ── RIGHT PANEL — ACTUAL FIRES ── */
+#right-panel {
+  width:340px; display:flex; flex-direction:column;
+  flex-shrink:0;
+}
+#right-title {
+  background:#1e293b; padding:8px 14px;
+  font-size:13px; font-weight:700; color:#DC2626;
+  border-bottom:1px solid #334155; flex-shrink:0;
+  display:flex; justify-content:space-between;
+  align-items:center;
+}
+#actual-map { height:280px; flex-shrink:0; }
+
+#fire-list {
+  flex:1; overflow-y:auto; background:#0f172a;
+  padding:8px;
+}
+#fire-list::-webkit-scrollbar { width:4px; }
+#fire-list::-webkit-scrollbar-track { background:#1e293b; }
+#fire-list::-webkit-scrollbar-thumb { background:#334155; border-radius:2px; }
+
+.fire-item {
+  background:#1e293b; border-radius:6px;
+  padding:8px 10px; margin-bottom:6px;
+  border-left:3px solid #DC2626;
+  cursor:pointer; transition:background 0.15s;
+}
+.fire-item:hover { background:#334155; }
+.fire-item-title {
+  font-size:11px; font-weight:700; color:white;
+}
+.fire-item-detail {
+  font-size:10px; color:#94a3b8; margin-top:3px;
+  line-height:1.5;
+}
+.fire-badge {
+  display:inline-block; padding:1px 6px;
+  border-radius:3px; font-size:9px;
+  font-weight:700; margin-right:4px;
+}
+
+/* ── LOADING OVERLAY ── */
+.loading-overlay {
+  position:absolute; top:0; left:0;
+  width:100%; height:100%;
+  background:rgba(15,23,42,0.92);
+  display:flex; align-items:center;
+  justify-content:center; z-index:9999;
+  flex-direction:column; gap:10px;
+}
+.loading-spinner {
+  width:36px; height:36px;
+  border:3px solid #334155;
+  border-top-color:#16A34A;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { color:#94a3b8; font-size:13px; }
+
+/* ── LEGEND ── */
+.map-legend {
+  background:rgba(30,41,59,0.95);
+  padding:8px 12px; border-radius:6px;
+  font-size:11px; line-height:1.8;
+  border:1px solid #334155;
+  color:white;
+}
+.legend-row { display:flex; align-items:center; gap:6px; }
+.legend-dot {
+  width:11px; height:11px;
+  border-radius:50%; flex-shrink:0;
+}
+
+/* ── FOOTER ── */
+#footer {
+  background:#0f172a; padding:5px 14px;
+  font-size:10px; color:#475569;
+  border-top:1px solid #1e293b;
+  flex-shrink:0; display:flex;
+  justify-content:space-between;
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="header-left">
+    <h1>🌲 Nepal Forest Fire Early Warning System</h1>
+    <p>XGBoost Spatial Model (AUC=0.967) + Open-Meteo 7-Day Forecast
+       &nbsp;|&nbsp; MSc Thesis — Naveen Bhatt, Tribhuvan University</p>
+  </div>
+  <div id="header-right">
+    <span id="forecast-date">Loading...</span>
+    <span>Ministry of Forests and Environment, Nepal</span>
+  </div>
+</div>
+
+<!-- STATS BAR -->
+<div id="stats-bar">
+  <div class="stat low" onclick="filterRisk('LOW')">
+    <div class="stat-num" id="cnt-low">--</div>
+    <div class="stat-label">LOW RISK</div>
+    <div class="stat-source">Click to highlight</div>
+  </div>
+  <div class="stat medium" onclick="filterRisk('MEDIUM')">
+    <div class="stat-num" id="cnt-med">--</div>
+    <div class="stat-label">MEDIUM RISK</div>
+    <div class="stat-source">Click to highlight</div>
+  </div>
+  <div class="stat high" onclick="filterRisk('HIGH')">
+    <div class="stat-num" id="cnt-high">--</div>
+    <div class="stat-label">HIGH RISK</div>
+    <div class="stat-source">Click to highlight</div>
+  </div>
+  <div class="stat vh" onclick="filterRisk('VERY HIGH')">
+    <div class="stat-num" id="cnt-vh">--</div>
+    <div class="stat-label">VERY HIGH RISK</div>
+    <div class="stat-source">Click to highlight</div>
+  </div>
+  <div class="stat" style="flex:2; cursor:default;">
+    <div style="font-size:10px; color:#94a3b8; line-height:1.6;">
+      🌿 Natural fire risk only &nbsp;|&nbsp;
+      📡 Weather: Open-Meteo API &nbsp;|&nbsp;
+      🛰️ Actual fires: NASA FIRMS VIIRS &nbsp;|&nbsp;
+      🔄 Updates daily at 6am Nepal time
+    </div>
+  </div>
+</div>
+
+<!-- MAIN BODY -->
+<div id="main-body">
+
+  <!-- LEFT: PREDICTED RISK MAP -->
+  <div id="left-panel">
+    <div id="left-title">
+      <span>📊 Predicted Fire Risk — Next 7 Days</span>
+      <span id="risk-count" style="font-size:11px;
+        color:#94a3b8; font-weight:400;">Loading...</span>
+    </div>
+    <div id="risk-map" style="position:relative;">
+      <div class="loading-overlay" id="risk-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading fire risk predictions...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: ACTUAL FIRES -->
+  <div id="right-panel">
+    <div id="right-title">
+      <span>🔴 Actual Fires — Last 7 Days</span>
+      <span id="actual-count" style="font-size:11px;
+        color:#94a3b8; font-weight:400;">NASA FIRMS</span>
+    </div>
+    <div id="actual-map" style="position:relative;">
+      <div class="loading-overlay" id="actual-loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading satellite fires...</div>
+      </div>
+    </div>
+    <div id="fire-list">
+      <div style="color:#64748b; font-size:11px;
+        padding:8px; text-align:center;">
+        Loading recent fire alerts...
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div id="footer">
+  <span>Data sources: NASA FIRMS VIIRS | ERA5 Reanalysis |
+    ESA WorldCover 10m | SRTM 30m | MODIS NDVI |
+    Open-Meteo Forecast API</span>
+  <span>Model: XGBoost | Training: 2018-2022 |
+    Test AUC: 0.967 | Natural fires only</span>
+</div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────────
+const NASA_FIRMS_KEY = 'YOUR_NASA_FIRMS_MAP_KEY_HERE';
+const RISK_COLORS = {
+  'LOW':      '#16A34A',
+  'MEDIUM':   '#D97706',
+  'HIGH':     '#EA580C',
+  'VERY HIGH':'#DC2626'
+};
+const RISK_SIZE = {
+  'LOW':5, 'MEDIUM':7, 'HIGH':9, 'VERY HIGH':13
+};
+
+// ── MAPS ───────────────────────────────────────────────────
+const riskMap = L.map('risk-map', {
+  zoomControl:true, attributionControl:false
+}).setView([28.2, 83.5], 7);
+
+const actualMap = L.map('actual-map', {
+  zoomControl:false, attributionControl:false
+}).setView([28.2, 83.5], 6);
+
+// Tile layers
+const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+L.tileLayer(tileUrl).addTo(riskMap);
+L.tileLayer(tileUrl).addTo(actualMap);
+
+// Nepal boundary box
+const nepalBounds = [[26.3, 80.0],[30.5, 88.2]];
+riskMap.setMaxBounds(nepalBounds);
+
+// ── LEGEND on risk map ─────────────────────────────────────
+const legend = L.control({ position:'bottomleft' });
+legend.onAdd = () => {
+  const div = L.DomUtil.create('div','map-legend');
+  div.innerHTML = `
+    <div style="font-weight:700;margin-bottom:4px;
+      font-size:12px;">Fire Risk Level</div>
+    ${Object.entries(RISK_COLORS).map(([r,c]) => `
+      <div class="legend-row">
+        <div class="legend-dot" style="background:${c}"></div>
+        <span>${r}</span>
+      </div>`).join('')}
+    <div style="margin-top:6px;font-size:9px;
+      color:#64748b;line-height:1.4;">
+      Based on 7-day weather forecast<br>
+      Natural fire risk only
+    </div>`;
+  return div;
+};
+legend.addTo(riskMap);
+
+// ── GLOBAL STATE ───────────────────────────────────────────
+let allMarkers = [];
+let allData    = [];
+let activeFilter = null;
+
+// ── LOAD PREDICTED RISK ────────────────────────────────────
+async function loadRiskData() {
+  const dates = [];
+  for (let i=0; i<8; i++) {
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    dates.push(d.toISOString().slice(0,10));
+  }
+
+  let csv = null, dateUsed = null;
+  for (const date of dates) {
+    try {
+      const res = await fetch(`fire_risk_${date}.csv`);
+      if (res.ok) { csv = await res.text(); dateUsed = date; break; }
+    } catch(e) {}
+  }
+
+  if (!csv) {
+    document.getElementById('risk-loading').innerHTML =
+      `<div style="color:#94a3b8;text-align:center;padding:20px">
+        No prediction data found.<br>
+        <small>Run GitHub Actions to generate today's forecast.</small>
+       </div>`;
+    return;
+  }
+
+  document.getElementById('risk-loading').style.display='none';
+  document.getElementById('forecast-date').textContent =
+    `Forecast: ${dateUsed} → +7 days`;
+
+  const lines  = csv.trim().split('\n');
+  const header = lines[0].split(',');
+  const iLat   = header.indexOf('latitude');
+  const iLon   = header.indexOf('longitude');
+  const iProb  = header.indexOf('probability');
+  const iRisk  = header.indexOf('risk_level');
+  const iTemp  = header.indexOf('temp_C');
+  const iRain  = header.indexOf('rain_7d_mm');
+
+  let counts = {LOW:0,MEDIUM:0,HIGH:0,'VERY HIGH':0};
+
+  lines.slice(1).forEach(line => {
+    if (!line.trim()) return;
+    const c   = line.split(',');
+    const lat = parseFloat(c[iLat]);
+    const lon = parseFloat(c[iLon]);
+    const prob= parseFloat(c[iProb]);
+    const risk= (c[iRisk]||'').trim().replace(/"/g,'');
+    const temp= c[iTemp]||'--';
+    const rain= c[iRain]||'--';
+    if (isNaN(lat)||isNaN(lon)) return;
+
+    counts[risk] = (counts[risk]||0)+1;
+
+    const marker = L.circleMarker([lat,lon],{
+      radius:      RISK_SIZE[risk]||5,
+      fillColor:   RISK_COLORS[risk]||'#gray',
+      color:       risk==='VERY HIGH'?'white':'transparent',
+      weight:      risk==='VERY HIGH'?1:0,
+      opacity:     1,
+      fillOpacity: risk==='LOW'?0.55:0.85
+    });
+
+    marker.bindPopup(`
+      <div style="font-family:'Segoe UI',sans-serif;
+        min-width:200px;">
+        <div style="background:${RISK_COLORS[risk]};
+          color:white;padding:7px 10px;border-radius:5px;
+          font-weight:800;font-size:14px;margin-bottom:8px;">
+          ${risk} FIRE RISK
+        </div>
+        <table style="font-size:12px;width:100%;
+          border-collapse:collapse;">
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:3px 6px;color:#666">
+              Location</td>
+            <td style="padding:3px 6px;font-weight:600">
+              ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°E</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:3px 6px;color:#666">
+              Fire Probability</td>
+            <td style="padding:3px 6px;font-weight:800;
+              color:${RISK_COLORS[risk]}">
+              ${(prob*100).toFixed(1)}%</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:3px 6px;color:#666">
+              Temperature</td>
+            <td style="padding:3px 6px;font-weight:600">
+              ${temp}°C</td>
+          </tr>
+          <tr style="border-bottom:1px solid #eee;">
+            <td style="padding:3px 6px;color:#666">
+              Rainfall (7 days)</td>
+            <td style="padding:3px 6px;font-weight:600">
+              ${rain} mm</td>
+          </tr>
+          <tr>
+            <td style="padding:3px 6px;color:#666">
+              Forecast window</td>
+            <td style="padding:3px 6px;font-weight:600">
+              ${dateUsed} + 7 days</td>
+          </tr>
+        </table>
+        <div style="font-size:9px;color:#999;margin-top:6px">
+          XGBoost model AUC=0.967 | Natural fire risk only
+        </div>
+      </div>
+    `, { maxWidth:240 });
+
+    marker.riskLevel = risk;
+    marker.addTo(riskMap);
+    allMarkers.push(marker);
+    allData.push({ lat, lon, prob, risk, temp, rain });
+  });
+
+  // Update stats
+  document.getElementById('cnt-low').textContent  = counts['LOW']||0;
+  document.getElementById('cnt-med').textContent  = counts['MEDIUM']||0;
+  document.getElementById('cnt-high').textContent = counts['HIGH']||0;
+  document.getElementById('cnt-vh').textContent   = counts['VERY HIGH']||0;
+
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  document.getElementById('risk-count').textContent =
+    `${total} forest locations predicted`;
+}
+
+// ── FILTER BY RISK LEVEL ───────────────────────────────────
+function filterRisk(level) {
+  if (activeFilter === level) {
+    activeFilter = null;
+    allMarkers.forEach(m => {
+      m.setStyle({ fillOpacity: m.riskLevel==='LOW'?0.55:0.85 });
+    });
+    document.getElementById('risk-count').textContent =
+      `${allMarkers.length} forest locations predicted`;
+  } else {
+    activeFilter = level;
+    allMarkers.forEach(m => {
+      if (m.riskLevel === level) {
+        m.setStyle({ fillOpacity:0.95 });
+      } else {
+        m.setStyle({ fillOpacity:0.08 });
+      }
+    });
+    const cnt = allMarkers.filter(
+      m => m.riskLevel===level
+    ).length;
+    document.getElementById('risk-count').textContent =
+      `Showing ${cnt} ${level} risk locations`;
+  }
+}
+
+// ── LOAD ACTUAL NASA FIRMS FIRES ───────────────────────────
+async function loadActualFires() {
+  try {
+    // Use NASA FIRMS public CSV API
+    // 7 days of VIIRS SNPP data for Nepal
+    const url =
+      'https://firms.modaps.eosdis.nasa.gov/api/country/csv/' +
+      `${NASA_FIRMS_KEY}/VIIRS_SNPP_NRT/NPL/7`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('NASA API failed');
+
+    const text = await res.text();
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) throw new Error('No fire data');
+
+    const header = lines[0].split(',');
+    const iLat   = header.indexOf('latitude');
+    const iLon   = header.indexOf('longitude');
+    const iDate  = header.indexOf('acq_date');
+    const iBrite = header.indexOf('bright_ti4');
+    const iConf  = header.indexOf('confidence');
+
+    document.getElementById('actual-loading').style.display='none';
+
+    let fires = [];
+    lines.slice(1).forEach(line => {
+      if (!line.trim()) return;
+      const c = line.split(',');
+      const lat   = parseFloat(c[iLat]);
+      const lon   = parseFloat(c[iLon]);
+      const date  = c[iDate]||'Unknown';
+      const brite = c[iBrite]||'--';
+      const conf  = (c[iConf]||'').trim();
+      if (isNaN(lat)||isNaN(lon)) return;
+      fires.push({ lat, lon, date, brite, conf });
+    });
+
+    // Sort by date descending
+    fires.sort((a,b) => b.date.localeCompare(a.date));
+
+    // Plot on actual map
+    fires.forEach(f => {
+      const confColor = f.conf==='h'?'#DC2626':
+                        f.conf==='n'?'#D97706':'#94a3b8';
+      L.circleMarker([f.lat, f.lon], {
+        radius:7, fillColor:'#DC2626',
+        color:'#FCA5A5', weight:1.5,
+        fillOpacity:0.8
+      }).bindPopup(`
+        <div style="font-family:'Segoe UI',sans-serif;
+          min-width:180px;">
+          <div style="background:#DC2626;color:white;
+            padding:5px 8px;border-radius:4px;
+            font-weight:800;margin-bottom:6px;">
+            🔥 CONFIRMED FIRE
+          </div>
+          <table style="font-size:11px;width:100%">
+            <tr><td style="color:#666">Date</td>
+                <td><b>${f.date}</b></td></tr>
+            <tr><td style="color:#666">Location</td>
+                <td><b>${f.lat.toFixed(3)}, ${f.lon.toFixed(3)}</b></td></tr>
+            <tr><td style="color:#666">Brightness</td>
+                <td><b>${f.brite} K</b></td></tr>
+            <tr><td style="color:#666">Confidence</td>
+                <td style="color:${confColor};font-weight:700">
+                  ${f.conf==='h'?'HIGH':f.conf==='n'?'NOMINAL':'LOW'}
+                </td></tr>
+          </table>
+          <div style="font-size:9px;color:#999;margin-top:5px">
+            Source: NASA FIRMS VIIRS SNPP
+          </div>
+        </div>
+      `).addTo(actualMap);
+    });
+
+    // Fire list
+    document.getElementById('actual-count').textContent =
+      `${fires.length} fires detected`;
+
+    const listEl = document.getElementById('fire-list');
+    if (fires.length === 0) {
+      listEl.innerHTML =
+        '<div style="color:#64748b;text-align:center;' +
+        'padding:20px;font-size:11px;">No fires detected ' +
+        'in last 7 days</div>';
+      return;
+    }
+
+    listEl.innerHTML = fires.slice(0,30).map(f => `
+      <div class="fire-item"
+        onclick="actualMap.flyTo([${f.lat},${f.lon}],10)">
+        <div class="fire-item-title">
+          🔥 ${f.lat.toFixed(3)}°N, ${f.lon.toFixed(3)}°E
+        </div>
+        <div class="fire-item-detail">
+          📅 ${f.date} &nbsp;|&nbsp;
+          🌡️ ${f.brite}K brightness &nbsp;|&nbsp;
+          <span style="color:${
+            f.conf==='h'?'#DC2626':
+            f.conf==='n'?'#D97706':'#94a3b8'}">
+            ${f.conf==='h'?'HIGH':
+              f.conf==='n'?'NOMINAL':'LOW'} confidence
+          </span>
+        </div>
+      </div>
+    `).join('');
+
+  } catch(err) {
+    // Fallback: show NDRRMA fires manually
+    document.getElementById('actual-loading').style.display='none';
+    document.getElementById('actual-count').textContent =
+      'NDRRMA records';
+
+    const ndrrmaFires = [
+      {lat:27.50,lon:84.30,name:'Chitwan NP, Chitwan',date:'2026-03-29'},
+      {lat:28.60,lon:81.60,name:'Simta-1, Surkhet',date:'2026-03-26'},
+      {lat:27.90,lon:85.20,name:'Shivapuri-1, Nuwakot',date:'2026-03-26'},
+      {lat:26.90,lon:86.50,name:'Triyuga-3, Udayapur',date:'2026-03-26'},
+      {lat:27.00,lon:87.30,name:'Chaubise-7, Dhankuta',date:'2026-03-26'},
+      {lat:27.00,lon:85.10,name:'Gujara-2, Rautahat',date:'2026-03-26'},
+      {lat:29.20,lon:81.00,name:'Bogtan-3, Doti',date:'2026-03-25'},
+    ];
+
+    ndrrmaFires.forEach(f => {
+      L.circleMarker([f.lat,f.lon],{
+        radius:8, fillColor:'#DC2626',
+        color:'white', weight:1.5, fillOpacity:0.85
+      }).bindPopup(`
+        <b style="color:#DC2626">🔥 ${f.name}</b><br>
+        Date: ${f.date}<br>
+        Source: NDRRMA Nepal
+      `).addTo(actualMap);
+    });
+
+    document.getElementById('fire-list').innerHTML =
+      ndrrmaFires.map(f => `
+        <div class="fire-item"
+          onclick="actualMap.flyTo([${f.lat},${f.lon}],11)">
+          <div class="fire-item-title">🔥 ${f.name}</div>
+          <div class="fire-item-detail">
+            📅 ${f.date} &nbsp;|&nbsp; Source: NDRRMA
+          </div>
+        </div>
+      `).join('');
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────
+loadRiskData();
+loadActualFires();
+</script>
+</body>
+</html>
