@@ -26,6 +26,16 @@ jobs:
       - name: Run prediction
         run: python predict.py
 
+      - name: Commit CSV to repository
+        run: |
+          git config --global user.email "nbhatt429@github.com"
+          git config --global user.name "Nepal Fire Bot"
+          git add fire_risk_*.csv fire_risk_map_*.png
+          git diff --staged --quiet || git commit -m "Daily fire risk prediction $(date +'%Y-%m-%d')"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
@@ -33,4 +43,4 @@ jobs:
           path: |
             fire_risk_map_*.png
             fire_risk_*.csv
-          retention-days: 30
+          retention-days: 30      
