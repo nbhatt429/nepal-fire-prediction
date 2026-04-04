@@ -123,7 +123,7 @@ feature_order = [
     "month","year","season_encoded","is_burning_season",
 ]
 
-LIMIT   = 500
+LIMIT   = len(forest_df)
 demo    = forest_df.head(LIMIT)
 results = []
 errors  = 0
