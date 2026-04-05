@@ -32,12 +32,15 @@ jobs:
         run: |
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git add -f fire_risk_*.csv fire_risk_map_*.png || true
-          git diff --staged --quiet || git commit -m "Daily prediction $(date +'%Y-%m-%d')"
-          git push origin main || echo "Nothing to push"
+          ls -la fire_risk_*.csv || echo "No CSV files found"
+          git status
+          git add -f fire_risk_*.csv || true
+          git add -f fire_risk_map_*.png || true
+          git status
+          git diff --staged --quiet && echo "Nothing to commit" || git commit -m "Daily prediction $(date +'%Y-%m-%d')"
+          git push origin main || echo "Push failed"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
