@@ -5,12 +5,17 @@ on:
     - cron: '15 0 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   predict:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -20,19 +25,16 @@ jobs:
       - name: Install packages
         run: pip install xgboost scikit-learn pandas numpy requests matplotlib
 
-      - name: List files
-        run: ls -la
-
       - name: Run prediction
         run: python predict.py
 
       - name: Commit CSV to repository
         run: |
-          git config --global user.email "nbhatt429@github.com"
-          git config --global user.name "Nepal Fire Bot"
-          git add fire_risk_*.csv fire_risk_map_*.png
-          git diff --staged --quiet || git commit -m "Daily fire risk prediction $(date +'%Y-%m-%d')"
-          git push
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git add -f fire_risk_*.csv fire_risk_map_*.png || true
+          git diff --staged --quiet || git commit -m "Daily prediction $(date +'%Y-%m-%d')"
+          git push origin main || echo "Nothing to push"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,6 +43,6 @@ jobs:
         with:
           name: fire-risk-outputs
           path: |
-            fire_risk_map_*.png
             fire_risk_*.csv
-          retention-days: 30      
+            fire_risk_map_*.png
+          retention-days: 30
