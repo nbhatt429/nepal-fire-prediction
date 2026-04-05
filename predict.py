@@ -123,8 +123,7 @@ feature_order = [
     "month","year","season_encoded","is_burning_season",
 ]
 
-LIMIT   = len(forest_df)
-demo    = forest_df.head(LIMIT)
+demo = forest_df.iloc[::14].copy().reset_index(drop=True)
 results = []
 errors  = 0
 
@@ -169,7 +168,7 @@ for i, (_, row) in enumerate(demo.iterrows()):
     })
     if (i+1) % 100 == 0:
         print(f"  {i+1}/{len(demo)} done...")
-    time.sleep(0.15)
+    time.sleep(0.05)
 
 date_str   = now.strftime("%Y-%m-%d")
 results_df = pd.DataFrame(results)
