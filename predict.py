@@ -14,7 +14,7 @@ print("Nepal Forest Fire Daily Prediction")
 print("="*50)
 print(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
 
-MODEL_PATH   = "xgboost_900m_final.json"
+MODEL_PATH   = "xgboost_corrected.json"
 TERRAIN_PATH = "nepal_forest_grid_terrain.csv"
 NDVI_PATH    = "nepal_ndvi_monthly_update.csv"
 GRID_PATH    = "nepal_forest_grid.csv"
