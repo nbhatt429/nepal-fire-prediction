@@ -112,15 +112,16 @@ def get_weather(lat, lon):
         return None
 
 feature_order = [
-    "elevation","slope","aspect","is_south_facing",
-    "ndvi_30to45","ndvi_60to90","ndvi_trend","ndvi_anomaly",
-    "landcover","is_burnable","dist_water_km",
-    "temp_C_mean","temp_C_max","temp_anomaly",
-    "precip_total","precip_mean_daily","pressure_mean",
-    "wind_speed_mean","wind_speed_max",
-    "rh_mean","rh_min",
-    "soil_moisture_mean","soil_moisture_min","soil_moisture_anomaly",
-    "month","year","season_encoded","is_burning_season",
+    'elevation','slope','aspect','is_south_facing',
+    'ndvi_30to45','ndvi_60to90','ndvi_trend','ndvi_anomaly',
+    'landcover','dist_water_km',
+    'temp_C_mean','temp_C_max','temp_anomaly',
+    'precip_total','precip_mean_daily','pressure_mean',
+    'wind_speed_mean','wind_speed_max',
+    'rh_mean','rh_min',
+    'soil_moisture_mean','soil_moisture_min',
+    'soil_moisture_anomaly',
+    'month','year','season_encoded','is_burning_season',
 ]
 
 demo = forest_df.iloc[::14].copy().reset_index(drop=True)
