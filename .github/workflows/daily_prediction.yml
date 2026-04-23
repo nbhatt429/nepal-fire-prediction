@@ -1,51 +1,46 @@
-name: Daily Nepal Fire Prediction
+name: Daily Nepal Fire Risk Prediction
 
 on:
   schedule:
-    - cron: '15 0 * * *'
-  workflow_dispatch:
+    - cron: '15 0 * * *'   # 6:00am Nepal time daily
+  workflow_dispatch:         # manual trigger button
 
-permissions:
-  contents: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # silences the warning
 
 jobs:
   predict:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5.3.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          python-version: '3.10'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install tensorflow==2.15.0 \
+                      scikit-learn \
+                      joblib \
+                      requests \
+                      numpy \
+                      pandas \
+                      matplotlib \
+                      geopandas
 
-      - name: Install packages
-        run: pip install tensorflow==2.15.0 scikit-learn joblib requests numpy pandas matplotlib
-
-      - name: Run prediction
+      - name: Run Transformer fire prediction
         run: python predict.py
 
-      - name: Commit CSV to repository
+      - name: Commit and push results
         run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action"
-          ls -la fire_risk_*.csv || echo "No CSV files found"
-          git status
-          git add -f fire_risk_*.csv || true
-          git add -f fire_risk_map_*.png || true
-          git status
-          git diff --staged --quiet && echo "Nothing to commit" || git commit -m "Daily prediction $(date +'%Y-%m-%d')"
-          git push origin main || echo "Push failed"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: fire-risk-outputs
-          path: |
-            fire_risk_*.csv
-            fire_risk_map_*.png
-          retention-days: 30
+          git config user.name  "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add fire_risk_*.csv fire_risk_map_*.png fire_alert_*.json
+          git diff --staged --quiet || git commit \
+            -m "Daily fire risk update $(date +'%Y-%m-%d') — Transformer AUC=0.9994"
+          git push
