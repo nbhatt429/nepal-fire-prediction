@@ -23,7 +23,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install packages
-        run: pip install xgboost scikit-learn pandas numpy requests matplotlib
+        run: pip install tensorflow==2.15.0 scikit-learn joblib requests numpy pandas matplotlib
 
       - name: Run prediction
         run: python predict.py
