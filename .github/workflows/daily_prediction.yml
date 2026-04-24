@@ -2,45 +2,38 @@ name: Daily Nepal Fire Risk Prediction
 
 on:
   schedule:
-    - cron: '15 0 * * *'   # 6:00am Nepal time daily
-  workflow_dispatch:         # manual trigger button
+    - cron: '15 0 * * *'
+  workflow_dispatch:
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # silences the warning
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   predict:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4.2.2
+      - uses: actions/checkout@v4.2.2
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5.3.0
+      - uses: actions/setup-python@v5.3.0
         with:
           python-version: '3.10'
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install tensorflow==2.15.0 \
-                      scikit-learn \
-                      joblib \
-                      requests \
-                      numpy \
-                      pandas \
-                      matplotlib \
-                      geopandas
+          pip install onnxruntime \
+                      scikit-learn joblib \
+                      requests numpy pandas matplotlib
 
-      - name: Run Transformer fire prediction
+      - name: Run prediction
         run: python predict.py
 
-      - name: Commit and push results
+      - name: Commit results
         run: |
           git config user.name  "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add fire_risk_*.csv fire_risk_map_*.png fire_alert_*.json
+          git add fire_risk_*.csv fire_risk_map_*.png \
+                  fire_alert_*.json
           git diff --staged --quiet || git commit \
-            -m "Daily fire risk update $(date +'%Y-%m-%d') — Transformer AUC=0.9994"
+            -m "Fire risk update $(date +'%Y-%m-%d') — Transformer ONNX AUC=0.9983"
           git push
