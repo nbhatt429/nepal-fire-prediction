@@ -2,8 +2,8 @@
   "date": "2026-04-25",
   "model": "Transformer ONNX AUC=0.9983",
   "total": 11200,
-  "very_high": 7178,
-  "high": 4022,
+  "very_high": 6886,
+  "high": 4314,
   "medium": 0,
   "low": 0,
   "top10": [
