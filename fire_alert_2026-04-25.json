@@ -1,0 +1,81 @@
+{
+  "date": "2026-04-25",
+  "model": "Transformer ONNX AUC=0.9983",
+  "total": 3956,
+  "very_high": 0,
+  "high": 0,
+  "medium": 0,
+  "low": 3956,
+  "top10": [
+    {
+      "latitude": 28.200000000000028,
+      "longitude": 85.1999999999997,
+      "probability": 0.1474,
+      "risk_level": "LOW",
+      "elevation": 3495.0
+    },
+    {
+      "latitude": 28.90000000000004,
+      "longitude": 82.94999999999983,
+      "probability": 0.1467,
+      "risk_level": "LOW",
+      "elevation": 3697.0
+    },
+    {
+      "latitude": 30.10000000000005,
+      "longitude": 80.54999999999997,
+      "probability": 0.1459,
+      "risk_level": "LOW",
+      "elevation": 3201.0
+    },
+    {
+      "latitude": 28.30000000000003,
+      "longitude": 84.69999999999973,
+      "probability": 0.1453,
+      "risk_level": "LOW",
+      "elevation": 3916.0
+    },
+    {
+      "latitude": 27.75000000000002,
+      "longitude": 87.84999999999955,
+      "probability": 0.1448,
+      "risk_level": "LOW",
+      "elevation": 3795.0
+    },
+    {
+      "latitude": 28.95000000000004,
+      "longitude": 82.39999999999986,
+      "probability": 0.1447,
+      "risk_level": "LOW",
+      "elevation": 3811.0
+    },
+    {
+      "latitude": 29.85000000000005,
+      "longitude": 80.84999999999995,
+      "probability": 0.1447,
+      "risk_level": "LOW",
+      "elevation": 3378.0
+    },
+    {
+      "latitude": 28.35000000000003,
+      "longitude": 84.84999999999972,
+      "probability": 0.1445,
+      "risk_level": "LOW",
+      "elevation": 3267.0
+    },
+    {
+      "latitude": 30.10000000000005,
+      "longitude": 80.59999999999997,
+      "probability": 0.1442,
+      "risk_level": "LOW",
+      "elevation": 3302.0
+    },
+    {
+      "latitude": 28.45000000000003,
+      "longitude": 84.19999999999976,
+      "probability": 0.1434,
+      "risk_level": "LOW",
+      "elevation": 3617.0
+    }
+  ]
+}
