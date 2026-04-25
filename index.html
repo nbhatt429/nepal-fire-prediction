@@ -119,10 +119,11 @@
 </div>
 
 <script>
-// ── Map setup ─────────────────────────────────────────────────────
 const map = L.map('map', {
-  center: [28.2, 83.9],
+  center: [28.1, 84.0],
   zoom: 7,
+  minZoom: 6,
+  maxZoom: 16,
   zoomControl: true
 });
 
@@ -131,7 +132,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom:18
 }).addTo(map);
 
-// Legend
+// Restrict to Nepal region
+map.setMaxBounds([[25.5,79.0],[31.0,89.0]]);
+
 const legendDiv = L.control({position:'bottomleft'});
 legendDiv.onAdd = () => {
   const d = L.DomUtil.create('div','legend');
@@ -146,14 +149,13 @@ legendDiv.onAdd = () => {
 };
 legendDiv.addTo(map);
 
-// ── Colour + size maps ────────────────────────────────────────────
 const CMAP = {
   'LOW':'#16A34A','MEDIUM':'#D97706',
   'HIGH':'#EA580C','VERY HIGH':'#DC2626'
 };
 const SMAP = {'LOW':4,'MEDIUM':7,'HIGH':10,'VERY HIGH':14};
 
-// ── Find most recent CSV ──────────────────────────────────────────
+// Find latest CSV file
 async function findLatestFile(base, ext, daysBack=3) {
   const today = new Date();
   for (let i=0; i<=daysBack; i++) {
@@ -163,43 +165,41 @@ async function findLatestFile(base, ext, daysBack=3) {
     const url = `${base}${ds}${ext}?_=${Date.now()}`;
     try {
       const r = await fetch(url, {method:'HEAD'});
-      if (r.ok) return {url, date:ds};
+      if (r.ok) return {url:`${base}${ds}${ext}`, date:ds};
     } catch(e) {}
   }
   return null;
 }
 
-// ── Load fire risk predictions ────────────────────────────────────
+// Load predictions
 async function loadPredictions() {
-  const found = await findLatestFile('fire_risk_', '.csv');
+  const found = await findLatestFile('fire_risk_','.csv');
   if (!found) {
     document.getElementById('alertList').innerHTML =
-      '<div class="no-data">No forecast data available</div>';
+      '<div class="no-data">No forecast data yet</div>';
     return;
   }
 
   const {url, date} = found;
-
-  // Update header badge
-  const forecastEnd = new Date(date);
-  forecastEnd.setDate(forecastEnd.getDate() + 7);
   document.getElementById('forecastBadge').textContent =
     `Forecast: ${date} + 7 days`;
 
-  const resp = await fetch(url);
+  const resp = await fetch(url + '?_=' + Date.now());
   const text = await resp.text();
   const rows = text.trim().split('\n');
-  const headers = rows[0].split(',');
-  const iLat  = headers.indexOf('latitude');
-  const iLon  = headers.indexOf('longitude');
-  const iProb = headers.indexOf('probability');
-  const iRisk = headers.indexOf('risk_level');
-  const iDist = headers.indexOf('district');
-  const iLL   = headers.indexOf('local_level');
+  const hdr  = rows[0].split(',');
+
+  const iLat  = hdr.indexOf('latitude');
+  const iLon  = hdr.indexOf('longitude');
+  const iProb = hdr.indexOf('probability');
+  const iRisk = hdr.indexOf('risk_level');
+  const iDist = hdr.indexOf('district');
+  const iLL   = hdr.indexOf('local_level');
+  const iElev = hdr.indexOf('elevation');
 
   let low=0, med=0, hi=0, vh=0;
   const highRisk = [];
-  const layerGroup = L.layerGroup().addTo(map);
+  const bounds   = [];
 
   for (let i=1; i<rows.length; i++) {
     const c = rows[i].split(',');
@@ -207,185 +207,195 @@ async function loadPredictions() {
     const lat  = parseFloat(c[iLat]);
     const lon  = parseFloat(c[iLon]);
     const prob = parseFloat(c[iProb]);
-    const risk = c[iRisk]?.trim();
-    if (isNaN(lat)||isNaN(lon)) continue;
+    const risk = (c[iRisk]||'').trim();
+    if (isNaN(lat)||isNaN(lon)||!risk) continue;
 
-    const color = CMAP[risk] || '#16A34A';
-    const size  = SMAP[risk] || 4;
+    // Only plot Nepal points
+    if (lat<26.0||lat>31.0||lon<79.5||lon>88.5) continue;
 
-    L.circleMarker([lat,lon], {
-      radius: size,
-      fillColor: color,
-      color: 'transparent',
-      fillOpacity: 0.75
+    const color = CMAP[risk]||'#16A34A';
+    const size  = SMAP[risk]||4;
+    bounds.push([lat,lon]);
+
+    const dist = iDist>=0 ? (c[iDist]||'').trim() : '';
+    const ll   = iLL>=0   ? (c[iLL]  ||'').trim() : '';
+    const elev = iElev>=0 ? (c[iElev]||'').trim() : '';
+
+    L.circleMarker([lat,lon],{
+      radius:size, fillColor:color,
+      color:'transparent', fillOpacity:0.75
     }).bindPopup(`
-      <b>${risk}</b><br>
-      Probability: ${(prob*100).toFixed(1)}%<br>
-      ${iDist>=0 ? c[iDist]?.trim() || '' : ''}<br>
-      ${iLL>=0   ? c[iLL]?.trim()   || '' : ''}<br>
-      Lat: ${lat.toFixed(3)}, Lon: ${lon.toFixed(3)}
-    `).addTo(layerGroup);
+      <b style="color:${color}">${risk}</b><br>
+      Probability: <b>${(prob*100).toFixed(1)}%</b><br>
+      ${dist ? 'District: '+dist+'<br>' : ''}
+      ${ll   ? 'Palika: '+ll+'<br>'     : ''}
+      ${elev ? 'Elevation: '+elev+'m<br>' : ''}
+      <small>Lat:${lat.toFixed(3)} Lon:${lon.toFixed(3)}</small>
+    `).addTo(map);
 
-    if (risk==='LOW')        low++;
+    if (risk==='LOW')         low++;
     else if (risk==='MEDIUM') med++;
     else if (risk==='HIGH')   hi++;
     else if (risk==='VERY HIGH') {
       vh++;
-      if (iDist>=0 && c[iDist]) {
-        highRisk.push({
-          prob, risk,
-          district:   c[iDist]?.trim() || 'Unknown',
-          local_level:iLL>=0 ? c[iLL]?.trim() || '' : '',
-          lat, lon
-        });
-      }
+      highRisk.push({prob,dist,ll,lat,lon});
     }
   }
 
-  // Update stats
+  // Fit map to Nepal data
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, {padding:[20,20], maxZoom:8});
+  }
+
+  // Stats
   document.getElementById('cntLow').textContent  = low.toLocaleString();
   document.getElementById('cntMed').textContent  = med.toLocaleString();
   document.getElementById('cntHigh').textContent = hi.toLocaleString();
   document.getElementById('cntVH').textContent   = vh.toLocaleString();
 
-  // Build alert list — group by district
-  const byDistrict = {};
-  highRisk.forEach(r => {
-    const k = r.district;
-    if (!byDistrict[k]) byDistrict[k] = {
-      district:r.district, max_prob:0,
-      local_levels:new Set(), count:0, lat:r.lat, lon:r.lon
-    };
-    byDistrict[k].max_prob = Math.max(
-      byDistrict[k].max_prob, r.prob);
-    if (r.local_level) byDistrict[k].local_levels.add(r.local_level);
-    byDistrict[k].count++;
-  });
-
-  const sorted = Object.values(byDistrict)
-    .sort((a,b)=>b.max_prob-a.max_prob);
-
+  // Alert list — group by district if available, else by coords
   const alertList = document.getElementById('alertList');
-  if (sorted.length === 0) {
+
+  if (highRisk.length === 0 && vh === 0) {
     alertList.innerHTML =
-      '<div class="no-data">No high risk locations today</div>';
-  } else {
-    alertList.innerHTML = sorted.slice(0,20).map(d => {
-      const lls = Array.from(d.local_levels).slice(0,3).join(', ');
-      return `
-        <div class="alert-item" onclick="map.setView([${d.lat},${d.lon}],10)">
-          <div class="place">
-            🔴 ${d.district}
+      '<div class="no-data">No very high risk locations today</div>';
+    return;
+  }
+
+  if (iDist >= 0) {
+    // Group by district
+    const byDist = {};
+    highRisk.forEach(r => {
+      const k = r.dist || `${r.lat.toFixed(1)},${r.lon.toFixed(1)}`;
+      if (!byDist[k]) byDist[k] = {
+        name:k, max_prob:0, lls:new Set(),
+        count:0, lat:r.lat, lon:r.lon
+      };
+      byDist[k].max_prob = Math.max(byDist[k].max_prob, r.prob);
+      if (r.ll) byDist[k].lls.add(r.ll);
+      byDist[k].count++;
+    });
+
+    const sorted = Object.values(byDist)
+      .sort((a,b)=>b.max_prob-a.max_prob);
+
+    alertList.innerHTML = `
+      <div style="padding:4px 14px;font-size:10px;color:#94a3b8">
+        ${vh.toLocaleString()} very high risk locations
+      </div>` +
+      sorted.slice(0,20).map(d=>`
+        <div class="alert-item"
+             onclick="map.setView([${d.lat},${d.lon}],11)">
+          <div class="place">🔴 ${d.name}
             <span class="risk-badge risk-vh">VERY HIGH</span>
           </div>
           <div class="meta">
-            ${lls ? lls + ' &nbsp;|&nbsp; ' : ''}
+            ${Array.from(d.lls).slice(0,3).join(', ')||''}
             ${d.count} locations &nbsp;|&nbsp;
-            Max prob: ${(d.max_prob*100).toFixed(1)}%
+            Max: ${(d.max_prob*100).toFixed(0)}%
           </div>
-        </div>`;
-    }).join('');
-  }
-}
-
-// ── Load actual FIRMS fires ───────────────────────────────────────
-async function loadFIRMS() {
-  const fireList = document.getElementById('fireList');
-  const firmsSources = [
-    'https://firms.modaps.eosdis.nasa.gov/data/active_fire/suomi-npp-viirs-c2/csv/SUOMI_VIIRS_C2_Southern_Asia_7d.csv',
-    'https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-20-viirs-c2/csv/J1_VIIRS_C2_Southern_Asia_7d.csv'
-  ];
-
-  let fires = [];
-  for (const url of firmsSources) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) continue;
-      const text = await r.text();
-      const rows = text.trim().split('\n');
-      const hdr  = rows[0].split(',');
-      const iLat  = hdr.indexOf('latitude');
-      const iLon  = hdr.indexOf('longitude');
-      const iDate = hdr.indexOf('acq_date');
-      const iConf = hdr.indexOf('confidence');
-      const iFRP  = hdr.indexOf('frp');
-
-      for (let i=1; i<rows.length; i++) {
-        const c = rows[i].split(',');
-        const lat  = parseFloat(c[iLat]);
-        const lon  = parseFloat(c[iLon]);
-        const conf = c[iConf]?.trim();
-        if (isNaN(lat)||isNaN(lon)) continue;
-        // Nepal bbox
-        if (lat<26.3||lat>30.5||lon<80.0||lon>88.2) continue;
-        if (conf!=='high'&&conf!=='h') continue;
-        fires.push({
-          lat, lon,
-          date: c[iDate]?.trim() || '',
-          frp:  parseFloat(c[iFRP]) || 0
-        });
-      }
-    } catch(e) {}
-  }
-
-  // Deduplicate
-  const seen = new Set();
-  fires = fires.filter(f => {
-    const k = `${f.lat.toFixed(2)}_${f.lon.toFixed(2)}_${f.date}`;
-    if (seen.has(k)) return false;
-    seen.add(k); return true;
-  });
-
-  // Add to map
-  fires.forEach(f => {
-    L.circleMarker([f.lat,f.lon], {
-      radius: 6,
-      fillColor: '#ef4444',
-      color: '#fff',
-      weight: 1,
-      fillOpacity: 0.9
-    }).bindPopup(`
-      <b>🔥 Actual Fire</b><br>
-      Date: ${f.date}<br>
-      FRP: ${f.frp.toFixed(1)} MW<br>
-      Source: NASA FIRMS VIIRS<br>
-      Lat: ${f.lat.toFixed(3)}, Lon: ${f.lon.toFixed(3)}
-    `).addTo(map);
-  });
-
-  // Update panel
-  const sorted = fires.sort((a,b)=>
-    b.date.localeCompare(a.date));
-
-  if (sorted.length === 0) {
-    fireList.innerHTML =
-      '<div class="no-data">No high confidence fires in last 7 days</div>';
+        </div>`).join('');
   } else {
-    fireList.innerHTML = `
+    // No district column — show top locations by probability
+    const topVH = highRisk
+      .sort((a,b)=>b.prob-a.prob).slice(0,20);
+    alertList.innerHTML = `
       <div style="padding:4px 14px;font-size:10px;color:#94a3b8">
-        ${sorted.length} high-confidence detections
+        ${vh.toLocaleString()} very high risk locations
       </div>` +
-      sorted.slice(0,30).map(f => `
-        <div class="ndrrma-item"
-             onclick="map.setView([${f.lat},${f.lon}],12)">
-          <div>
-            <span class="fire-icon">🔥</span>
-            <span class="fire-place">
-              ${f.lat.toFixed(2)}°N, ${f.lon.toFixed(2)}°E
-            </span>
+      topVH.map(r=>`
+        <div class="alert-item"
+             onclick="map.setView([${r.lat},${r.lon}],12)">
+          <div class="place">🔴 ${r.lat.toFixed(3)}°N,
+            ${r.lon.toFixed(3)}°E
+            <span class="risk-badge risk-vh">VERY HIGH</span>
           </div>
-          <div class="fire-date">
-            📅 ${f.date} &nbsp;|&nbsp;
-            FRP: ${f.frp.toFixed(0)} MW &nbsp;|&nbsp;
-            NASA FIRMS
+          <div class="meta">
+            Probability: ${(r.prob*100).toFixed(1)}%
           </div>
         </div>`).join('');
   }
 }
 
-// ── Initialise ────────────────────────────────────────────────────
+// Load actual fires from your own alert JSON
+// (avoids CORS issue with FIRMS direct API)
+async function loadFires() {
+  const fireList = document.getElementById('fireList');
+
+  // Try loading from your own alert JSON first
+  const found = await findLatestFile('fire_alert_','.json');
+  if (found) {
+    try {
+      const r = await fetch(found.url + '?_=' + Date.now());
+      const data = await r.json();
+
+      // Show top high risk from your own model
+      const top = data.top10 || data.top_locations || [];
+      if (top.length > 0) {
+        fireList.innerHTML = `
+          <div style="padding:4px 14px;font-size:10px;
+                      color:#94a3b8">
+            Model top ${top.length} highest risk locations
+          </div>` +
+          top.map(loc => {
+            const risk = loc.risk_level || 'HIGH';
+            const color = CMAP[risk] || '#EA580C';
+            const dist  = loc.district     || '';
+            const ll    = loc.local_level  || '';
+            return `
+              <div class="ndrrma-item"
+                   onclick="map.setView(
+                     [${loc.latitude},${loc.longitude}],12)">
+                <div>
+                  <span style="color:${color}">🔥</span>
+                  <span class="fire-place">
+                    ${dist||ll||
+                      loc.latitude.toFixed(2)+'°N, '+
+                      loc.longitude.toFixed(2)+'°E'}
+                  </span>
+                  <span class="risk-badge"
+                        style="background:#7f1d1d;color:#fca5a5">
+                    ${risk}
+                  </span>
+                </div>
+                <div class="fire-date">
+                  📊 Prob: ${(loc.probability*100).toFixed(1)}%
+                  &nbsp;|&nbsp; ${found.date}
+                  ${loc.elevation ?
+                    ' | '+Math.round(loc.elevation)+'m' : ''}
+                </div>
+              </div>`;
+          }).join('');
+
+        // Add markers for top locations
+        top.forEach(loc => {
+          L.circleMarker(
+            [loc.latitude, loc.longitude],{
+              radius:8, fillColor:'#ef4444',
+              color:'#fff', weight:2,
+              fillOpacity:0.9
+            }
+          ).bindPopup(`
+            <b>🔥 Highest Risk</b><br>
+            ${loc.district||''} ${loc.local_level||''}<br>
+            Probability: ${(loc.probability*100).toFixed(1)}%<br>
+            Risk: ${loc.risk_level}
+          `).addTo(map);
+        });
+        return;
+      }
+    } catch(e) {
+      console.log('Alert JSON error:', e);
+    }
+  }
+
+  fireList.innerHTML =
+    '<div class="no-data">Fire data loading...</div>';
+}
+
+// Run
 loadPredictions();
-loadFIRMS();
+loadFires();
 </script>
 </body>
 </html>
