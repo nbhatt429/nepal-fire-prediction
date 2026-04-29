@@ -1,0 +1,71 @@
+{
+  "date": "2026-04-29",
+  "model": "Transformer ONNX AUC=0.9983",
+  "total": 11200,
+  "very_high": 6964,
+  "high": 4236,
+  "medium": 0,
+  "low": 0,
+  "top10": [
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.54999999999974,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.59999999999974,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.64999999999974,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.69999999999973,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.74999999999973,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.79999999999973,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 84.84999999999972,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 85.3999999999997,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 85.44999999999969,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    },
+    {
+      "latitude": 26.500000000000004,
+      "longitude": 85.49999999999969,
+      "probability": 0.8513,
+      "risk_level": "VERY HIGH"
+    }
+  ]
+}
