@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install xgboost joblib scikit-learn \
+          pip install xgboost joblib "scikit-learn==1.6.1" \
                       requests numpy pandas matplotlib scipy \
                       openmeteo-requests requests-cache retry-requests
 

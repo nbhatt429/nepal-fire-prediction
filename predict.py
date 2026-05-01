@@ -121,7 +121,10 @@ def fetch_era5_coarse():
     coarse_vals   = np.array(list(all_data.values()))
     coarse_coords = np.column_stack([coarse_lats, coarse_lons])
     grid_coords   = static_df[["latitude","longitude"]].values
-    era5_grid     = np.zeros((len(static_df), 90, 18))
+    # Drop NaN grid coords
+    valid_mask = np.isfinite(grid_coords).all(axis=1)
+    grid_coords = grid_coords[valid_mask]
+    era5_grid     = np.zeros((len(grid_coords), 90, 18))
 
     for day in range(90):
         for feat in range(18):
@@ -134,6 +137,8 @@ def fetch_era5_coarse():
             era5_grid[:, day, feat] = interp
 
     print(f"ERA5 interpolated: {era5_grid.shape}")
+    static_df.drop(static_df.index[~valid_mask], inplace=True)
+    static_df.reset_index(drop=True, inplace=True)
     return era5_grid
 
 def build_xgb_features(era5_grid, terrain_df):
