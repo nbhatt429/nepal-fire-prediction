@@ -27,9 +27,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install onnxruntime \
-                      scikit-learn joblib \
-                      requests numpy pandas matplotlib
+          pip install xgboost joblib scikit-learn \
+                      requests numpy pandas matplotlib scipy \
+                      openmeteo-requests requests-cache retry-requests
 
       - name: Run prediction
         run: python predict.py
@@ -38,6 +38,6 @@ jobs:
         run: |
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
-          git add fire_risk_*.csv fire_risk_map_*.png fire_alert_*.json
-          git diff --staged --quiet || git commit -m "Fire risk update $(date +'%Y-%m-%d') — Transformer ONNX AUC=0.9983"
+          git add fire_risk_*.csv fire_risk_map_*.png
+          git diff --staged --quiet || git commit -m "Fire risk update $(date +'%Y-%m-%d') — Ensemble XGBoost 73.1%"
           git push
