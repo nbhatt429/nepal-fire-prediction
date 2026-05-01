@@ -121,11 +121,8 @@ def fetch_era5_coarse():
     coarse_lons   = np.array([k[1] for k in all_data])
     coarse_vals   = np.array(list(all_data.values()))
     coarse_coords = np.column_stack([coarse_lats, coarse_lons])
-    grid_coords   = static_df[["latitude","longitude"]].values
-    # Drop NaN grid coords
-    valid_idx = np.where(np.isfinite(grid_coords).all(axis=1))[0]
-    grid_coords = grid_coords[valid_idx]
-    print(f"Valid grid coords: {len(grid_coords)}/{len(static_df)}")
+    grid_coords = static_df[["latitude","longitude"]].astype(float).values
+    print(f"Grid coords: {len(grid_coords)} points, sample: {grid_coords[:2]}")
     era5_grid = np.zeros((len(grid_coords), 90, 18))
 
     for day in range(90):
@@ -139,7 +136,7 @@ def fetch_era5_coarse():
             era5_grid[:, day, feat] = interp
 
     print(f"ERA5 interpolated: {era5_grid.shape}")
-    return era5_grid, valid_idx
+    return era5_grid
 
 def build_xgb_features(era5_grid, terrain_df):
     f = pd.DataFrame()
@@ -187,11 +184,8 @@ print("Fetching ERA5...")
 result = fetch_era5_coarse()
 
 if result is not None:
-    era5_grid, valid_idx = result
-    print(f"valid_idx length: {len(valid_idx)}")
-    print(f"static_df length before filter: {len(static_df)}")
-    static_df = static_df.iloc[valid_idx].reset_index(drop=True)
-    print(f"Valid grid points: {len(static_df)}")
+    era5_grid = result
+    print(f"Grid points: {len(static_df)}")
     print("Building features...")
     X = build_xgb_features(era5_grid, static_df)
     print(f"X shape: {X.shape}")
