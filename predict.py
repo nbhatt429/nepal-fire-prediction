@@ -188,10 +188,13 @@ result = fetch_era5_coarse()
 
 if result is not None:
     era5_grid, valid_idx = result
+    print(f"valid_idx length: {len(valid_idx)}")
+    print(f"static_df length before filter: {len(static_df)}")
     static_df = static_df.iloc[valid_idx].reset_index(drop=True)
     print(f"Valid grid points: {len(static_df)}")
     print("Building features...")
-    X     = build_xgb_features(era5_grid, static_df)
+    X = build_xgb_features(era5_grid, static_df)
+    print(f"X shape: {X.shape}")
     X_imp = imputer.transform(X)
     probs = xgb_model.predict_proba(X_imp)[:,1]
     print(f"Done. Mean prob: {probs.mean():.3f}")
