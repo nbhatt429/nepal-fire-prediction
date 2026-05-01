@@ -36,8 +36,7 @@ grid    = pd.read_csv(GRID_PATH)
 terrain = pd.read_csv(TERRAIN_PATH)
 ndvi    = pd.read_csv(NDVI_PATH)
 
-static_df = terrain.merge(grid[["point_id","latitude","longitude"]],
-                           on="point_id", how="inner")
+static_df = terrain.copy()
 for col, default in [("ndvi_30to45",0.30),("ndvi_60to90",0.35),
                      ("ndvi_trend",0.05),("ndvi_anomaly",0.0)]:
     if col not in static_df.columns:
