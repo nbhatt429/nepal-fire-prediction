@@ -124,6 +124,8 @@ def fetch_era5_coarse():
     grid_coords   = static_df[["latitude","longitude"]].values
     # Drop NaN grid coords
     valid_mask = np.isfinite(grid_coords).all(axis=1)
+    print(f"Valid grid coords: {valid_mask.sum()}/{len(valid_mask)}")
+    print(f"Sample grid_coords: {grid_coords[:3]}")
     grid_coords = grid_coords[valid_mask]
     era5_grid     = np.zeros((len(grid_coords), 90, 18))
 
