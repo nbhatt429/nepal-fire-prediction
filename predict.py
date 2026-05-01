@@ -36,12 +36,11 @@ grid    = pd.read_csv(GRID_PATH)
 terrain = pd.read_csv(TERRAIN_PATH)
 ndvi    = pd.read_csv(NDVI_PATH)
 
-# Merge lat/lon from grid if missing in terrain
-if terrain[["latitude","longitude"]].isna().all().any():
-    grid_coords_df = grid[["point_id","latitude","longitude"]]
-    terrain = terrain.drop(columns=["latitude","longitude"], errors="ignore")
-    terrain = terrain.merge(grid_coords_df, on="point_id", how="left")
+# Always merge lat/lon from grid — terrain file may have NaN
+terrain = terrain.drop(columns=["latitude","longitude"], errors="ignore")
+terrain = terrain.merge(grid[["point_id","latitude","longitude"]], on="point_id", how="left")
 static_df = terrain.copy()
+print(f"Terrain lat sample: {static_df['latitude'].head(3).tolist()}")
 for col, default in [("ndvi_30to45",0.30),("ndvi_60to90",0.35),
                      ("ndvi_trend",0.05),("ndvi_anomaly",0.0)]:
     if col not in static_df.columns:
