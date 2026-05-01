@@ -137,9 +137,7 @@ def fetch_era5_coarse():
             era5_grid[:, day, feat] = interp
 
     print(f"ERA5 interpolated: {era5_grid.shape}")
-    static_df.drop(static_df.index[~valid_mask], inplace=True)
-    static_df.reset_index(drop=True, inplace=True)
-    return era5_grid
+    return era5_grid, valid_mask
 
 def build_xgb_features(era5_grid, terrain_df):
     f = pd.DataFrame()
@@ -184,9 +182,12 @@ def build_xgb_features(era5_grid, terrain_df):
     return f[feature_cols]
 
 print("Fetching ERA5...")
-era5_grid = fetch_era5_coarse()
+result = fetch_era5_coarse()
 
-if era5_grid is not None:
+if result is not None:
+    era5_grid, valid_mask = result
+    static_df = static_df[valid_mask].reset_index(drop=True)
+    print(f"Valid grid points: {len(static_df)}")
     print("Building features...")
     X     = build_xgb_features(era5_grid, static_df)
     X_imp = imputer.transform(X)
@@ -194,6 +195,7 @@ if era5_grid is not None:
     print(f"Done. Mean prob: {probs.mean():.3f}")
 else:
     print("ERA5 failed — zeros fallback")
+    valid_mask = np.ones(len(static_df), dtype=bool)
     probs = np.zeros(len(static_df))
 
 def to_risk(p):
