@@ -123,11 +123,10 @@ def fetch_era5_coarse():
     coarse_coords = np.column_stack([coarse_lats, coarse_lons])
     grid_coords   = static_df[["latitude","longitude"]].values
     # Drop NaN grid coords
-    valid_mask = np.isfinite(grid_coords).all(axis=1)
-    print(f"Valid grid coords: {valid_mask.sum()}/{len(valid_mask)}")
-    print(f"Sample grid_coords: {grid_coords[:3]}")
-    grid_coords = grid_coords[valid_mask]
-    era5_grid     = np.zeros((len(grid_coords), 90, 18))
+    valid_idx = np.where(np.isfinite(grid_coords).all(axis=1))[0]
+    grid_coords = grid_coords[valid_idx]
+    print(f"Valid grid coords: {len(grid_coords)}/{len(static_df)}")
+    era5_grid = np.zeros((len(grid_coords), 90, 18))
 
     for day in range(90):
         for feat in range(18):
@@ -140,7 +139,7 @@ def fetch_era5_coarse():
             era5_grid[:, day, feat] = interp
 
     print(f"ERA5 interpolated: {era5_grid.shape}")
-    return era5_grid, valid_mask
+    return era5_grid, valid_idx
 
 def build_xgb_features(era5_grid, terrain_df):
     f = pd.DataFrame()
@@ -188,8 +187,8 @@ print("Fetching ERA5...")
 result = fetch_era5_coarse()
 
 if result is not None:
-    era5_grid, valid_mask = result
-    static_df = static_df[valid_mask].reset_index(drop=True)
+    era5_grid, valid_idx = result
+    static_df = static_df.iloc[valid_idx].reset_index(drop=True)
     print(f"Valid grid points: {len(static_df)}")
     print("Building features...")
     X     = build_xgb_features(era5_grid, static_df)
