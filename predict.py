@@ -110,7 +110,8 @@ def fetch_era5_coarse():
             combined = pd.concat([hist_daily, fc_daily]).iloc[:90]
             all_data[(lat,lon)] = combined.values
         except Exception as e:
-            pass
+            if i < 3:  # print first 3 errors only
+                print(f"ERA5 error {lat},{lon}: {e}")
         time.sleep(0.05)
 
     if not all_data:
