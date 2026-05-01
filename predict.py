@@ -39,8 +39,9 @@ ndvi    = pd.read_csv(NDVI_PATH)
 # Always merge lat/lon from grid — terrain file may have NaN
 terrain = terrain.drop(columns=["latitude","longitude"], errors="ignore")
 terrain = terrain.merge(grid[["point_id","latitude","longitude"]], on="point_id", how="left")
+terrain = terrain.dropna(subset=["latitude","longitude"]).reset_index(drop=True)
 static_df = terrain.copy()
-print(f"Terrain lat sample: {static_df['latitude'].head(3).tolist()}")
+print(f"Grid points after merge: {len(static_df)}, lat sample: {static_df['latitude'].head(3).tolist()}")
 for col, default in [("ndvi_30to45",0.30),("ndvi_60to90",0.35),
                      ("ndvi_trend",0.05),("ndvi_anomaly",0.0)]:
     if col not in static_df.columns:
